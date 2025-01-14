@@ -2,8 +2,8 @@ import {test as base} from '@applitools/eyes-playwright/fixture';
 import type { Eyes } from '@applitools/eyes-playwright';
 
 import {tmpdir} from 'os';
-import { basename, join, resolve } from 'path';
-import { writeFile, mkdir, rm, readdir } from 'fs/promises';
+import { join, resolve } from 'path';
+import { writeFile, mkdir, readdir } from 'fs/promises';
 
 export const test = base.extend
 <{
@@ -34,30 +34,32 @@ export const test = base.extend
 });
 
 async function downloadPdfAndVisuallyTest(title: string, url: string, eyes: Eyes) {
-    const dirname = await downloadToTmp(title, url);
+    const dirname = await downloadPdfImages(title, url);
     return await testImageFolder(dirname, eyes, title);
 }
 
-async function downloadToTmp(title: string, url: string) {
-    const dirname = tmpdir() + '/pdfs/' + title;
-    await mkdir(dirname, { recursive: true });
-    const filename = join(dirname, basename(url));
-    const response = await fetch(url);
-    const buffer = await response.arrayBuffer();
-    await writeFile(filename, Buffer.from(buffer));
+async function downloadPdfImages(title: string, url: string) {
     const { pdf } = await import("pdf-to-img");
-    const document = await pdf(filename);
+    const document = await pdf(await download2buffer(url));
 
-    const imagesDir = join(dirname, 'images');
-    await mkdir(imagesDir, { recursive: true });
+    const dirname = await createTempDir(title);
     let counter = 0;
     for await (const image of document) {
-        await writeFile(join(imagesDir, `${++counter}.png`), image);
+        await writeFile(join(dirname, `${++counter}.png`), image);
     }
-    await rm(filename);
-    return imagesDir;
+    return dirname;
 }
 
+async function createTempDir(title: string) {
+    const name = join(tmpdir(), 'pdfs', title);
+    await mkdir(name, { recursive: true });
+    return name;
+}
+
+async function download2buffer(url: string) {
+    const response = await fetch(url);
+    return Buffer.from(await response.arrayBuffer());
+}
 
 async function testImageFolder(dirname: string, eyes: Eyes, title: string) {
     console.log(`Testing PDFs in ${dirname}`);
