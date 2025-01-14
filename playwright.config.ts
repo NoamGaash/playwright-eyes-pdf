@@ -6,6 +6,7 @@ export default defineConfig<EyesFixture>({
   reporter: '@applitools/eyes-playwright/reporter',
   use: {
     eyesConfig: {
+      failTestsOnDiff: 'afterEach',
       // You can configure API key and Server URL here, but I personally prefer to use environment variables -
       // APPLITOOLS_API_KEY and APPLITOOLS_SERVER_URL
     },
