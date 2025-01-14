@@ -16,8 +16,7 @@ export default defineConfig<EyesFixture>({
   projects: [
     {
       name: 'chromium',
-      // seems like we must use headless false to test PDF files
-      use: { ...devices['Desktop Chrome'], headless: false },
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

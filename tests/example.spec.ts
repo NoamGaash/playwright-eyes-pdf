@@ -1,10 +1,12 @@
 import { test } from './eyesPDFFixture';
 
-test('example test', async ({ page, eyes }) => {
+// to open PDFs in the browser, we need to run the tests in non-headless mode
+test.use({ headless: false });
+
+test('test a PDF and a website in the same test', async ({ page, eyes }) => {
   await page.goto('https://example.com');
-  await eyes.check('Main Page of Example.com');
-  await page.goto('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
-  // the dummy PDF is automatically tested by the fixture
+  await eyes.check('Main Page of Example.com'); // test the website
+  await page.goto('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'); // test the PDF
 });
 
 test('pdf embedded in iframe', async ({ page, eyes }) => {
@@ -12,6 +14,8 @@ test('pdf embedded in iframe', async ({ page, eyes }) => {
   // the PDF embedded in the iframe is automatically tested by the fixture
 })
 
+
+// this test can run with headless mode because it doesn't open the PDF in the browser
 test('test PDF from link', async ({ page, testPdf }) => {
   await page.goto('https://applitools.com/automated-visual-testing-best-practices-guide/');
   const link = await page.$('a[href$=".pdf"]');

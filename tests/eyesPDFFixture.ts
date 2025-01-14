@@ -1,5 +1,5 @@
-import {test as base, EyesConfig} from '@applitools/eyes-playwright/fixture';
-import { ConfigurationPlain, Eyes, Target, TestResults } from '@applitools/eyes-playwright';
+import {test as base} from '@applitools/eyes-playwright/fixture';
+import type { Eyes } from '@applitools/eyes-playwright';
 
 import {tmpdir} from 'os';
 import { basename, join, resolve } from 'path';
@@ -8,34 +8,34 @@ import { writeFile, mkdir, rm, readdir } from 'fs/promises';
 export const test = base.extend
 <{
     registerPDFListener: void,
-    testPdf: (url: string) => Promise<TestResults>
+    testPdf: (url: string) => Promise<void>
 }>({
     // whenever a browser visits a PDF, this fixture will download the PDF and visually test it automatically
-    registerPDFListener: [async ({page, eyesConfig}, use, testInfo) => {
+    registerPDFListener: [async ({page, eyes}, use, testInfo) => {
             const waitAfterTest: Promise<unknown>[] = [];
             page.on('response', async response => {
                 const headers = response.headers();
                 if (headers['content-type']?.includes('pdf')) {
-                    waitAfterTest.push(downloadPdfAndVisuallyTest(testInfo.title, response.url(), eyesConfig));
+                    waitAfterTest.push(downloadPdfAndVisuallyTest(testInfo.title, response.url(), eyes as Eyes));
                 }
             })
             await use()
             if(waitAfterTest.length > 0) {
                 console.log('Waiting for all PDFs to be processed');
-                await Promise.all(waitAfterTest);
+                await Promise.allSettled(waitAfterTest);
             }
         },
         { auto: true, timeout: 0 }
     ],
     // this function can be used to test a PDF manually
-    testPdf: async ({eyesConfig}, use, testInfo) => {
-        use((url) => downloadPdfAndVisuallyTest(testInfo.title, url, eyesConfig));
+    testPdf: async ({eyes}, use, testInfo) => {
+        use((url) => downloadPdfAndVisuallyTest(testInfo.title, url, eyes as Eyes));
     }
 });
 
-async function downloadPdfAndVisuallyTest(title: string, url: string, eyesConfig: ConfigurationPlain | EyesConfig) {
+async function downloadPdfAndVisuallyTest(title: string, url: string, eyes: Eyes) {
     const dirname = await downloadToTmp(title, url);
-    return await testImageFolder(dirname, eyesConfig, title);
+    return await testImageFolder(dirname, eyes, title);
 }
 
 async function downloadToTmp(title: string, url: string) {
@@ -59,18 +59,14 @@ async function downloadToTmp(title: string, url: string) {
 }
 
 
-async function testImageFolder(dirname: string, eyesConfig: ConfigurationPlain | EyesConfig, title: string) {
+async function testImageFolder(dirname: string, eyes: Eyes, title: string) {
     console.log(`Testing PDFs in ${dirname}`);
-    const eyes = new Eyes(eyesConfig as ConfigurationPlain);
-    // eyes.setConfiguration(eyesConfig as any);
-    await eyes.open(title, title);
     const files = await readdir(dirname);
     for (const file of files) {
-        const target = Target.image(resolve(join(dirname, file)))
-        await eyes.check(file, target);
+        await eyes.check({
+            name: file,
+            image: resolve(dirname, file),
+        });
     }
-    const result = await eyes.close(!!(eyesConfig as EyesConfig).failTestsOnDiff);
-    console.log(`PDF test results: ${result.url}`);
-    return result;
 }
 
